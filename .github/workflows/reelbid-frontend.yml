@@ -40,10 +40,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      - name: Build & push Docker image
+      - name: Build & Push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./frontend
+          file: ./frontend/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
 
@@ -65,14 +66,31 @@ jobs:
             --document-name "AWS-RunShellScript" \
             --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
             --parameters 'commands=[
+              "set -e",
               "export DOCKER_USERNAME=${{ secrets.DOCKERHUB_USERNAME }}",
               "export DOCKER_PASSWORD=${{ secrets.DOCKERHUB_PASSWORD }}",
               "export TAG=${{ needs.build-and-push.outputs.docker_tag }}",
-              "echo $DOCKER_PASSWORD | docker login docker.io -u $DOCKER_USERNAME --password-stdin || exit 1",
-              "docker pull docker.io/$DOCKER_USERNAME/reelbid-frontend:$TAG || exit 1",
+
+              "echo Logging into Docker Hub...",
+              "echo $DOCKER_PASSWORD | docker login docker.io -u $DOCKER_USERNAME --password-stdin",
+
+              "echo Pulling latest image...",
+              "docker pull docker.io/$DOCKER_USERNAME/reelbid-frontend:$TAG",
+
+              "echo Stopping old container (if exists)...",
               "docker stop reelbid-frontend-container || true",
               "docker rm reelbid-frontend-container || true",
-              "docker run -d --name reelbid-frontend-container -p 8080:8080 docker.io/$DOCKER_USERNAME/reelbid-frontend:$TAG || exit 1",
-              "docker image prune -af || true"
+
+              "echo Running new container...",
+              "docker run -d \
+                --name reelbid-frontend-container \
+                --restart unless-stopped \
+                -p 8080:8080 \
+                docker.io/$DOCKER_USERNAME/reelbid-frontend:$TAG",
+
+              "echo Cleaning old images...",
+              "docker image prune -af || true",
+
+              "echo Deployment successful!"
             ]' \
             --region ${{ env.AWS_REGION }}
