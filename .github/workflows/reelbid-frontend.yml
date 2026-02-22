@@ -43,8 +43,8 @@ jobs:
       - name: Build & Push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./frontend
-          file: ./frontend/Dockerfile
+          context: ./reelbid-main
+          file: ./reelbid-main/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
 
@@ -77,7 +77,7 @@ jobs:
               "echo Pulling latest image...",
               "docker pull docker.io/$DOCKER_USERNAME/reelbid-frontend:$TAG",
 
-              "echo Stopping old container (if exists)...",
+              "echo Stopping old container...",
               "docker stop reelbid-frontend-container || true",
               "docker rm reelbid-frontend-container || true",
 
@@ -91,6 +91,6 @@ jobs:
               "echo Cleaning old images...",
               "docker image prune -af || true",
 
-              "echo Deployment successful!"
+              "echo Deployment completed successfully!"
             ]' \
             --region ${{ env.AWS_REGION }}
